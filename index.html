@@ -544,7 +544,7 @@
     <input
       type="text"
       id="worker-url"
-      placeholder="Enter Cloudflare Worker host: "
+      placeholder="Enter Cloudflare Worker host (e.g. wio-radar.yourname.workers.dev)"
       onchange="saveWorkerHost()"
     />
     <button id="btn-sound" class="btn-sound-on" onclick="toggleSound()">BEEP: ON (15S)</button>
@@ -692,7 +692,7 @@
             type="text"
             id="city-input"
             maxlength="60"
-            placeholder="E.G. MNL, MANIL, METRO, VANCOU, LON"
+            placeholder="E.G. MNL, MANIL, METRO, LEGAZPI, DRP, VANCOU"
             autocomplete="off"
           />
           <button type="submit" class="btn-magenta">APPLY CITY</button>
@@ -702,6 +702,7 @@
         <div class="preset-chips" id="city-presets">
           <button type="button" data-city="" onclick="setCityFilter('')">ALL CITIES</button>
           <button type="button" data-city="MANILA" onclick="togglePresetCity('MANILA')">MANILA (MNL)</button>
+          <button type="button" data-city="LEGAZPI" onclick="togglePresetCity('LEGAZPI')">LEGAZPI / DRP</button>
           <button type="button" data-city="SINGAPORE" onclick="togglePresetCity('SINGAPORE')">SINGAPORE (SIN)</button>
           <button type="button" data-city="TOKYO" onclick="togglePresetCity('TOKYO')">TOKYO</button>
           <button type="button" data-city="LONDON" onclick="togglePresetCity('LONDON')">LONDON</button>
@@ -797,6 +798,17 @@
       AK: ["AK", "AXM"], AXM: ["AK", "AXM"],
       EK: ["EK", "UAE"], UAE: ["EK", "UAE"],
       QR: ["QR", "QTR"], QTR: ["QR", "QTR"]
+    };
+
+    const CITY_QUERY_ALIASES = {
+      BICOL: ["BICOL", "LEGAZPI", "DARAGA", "MABINI", "DRP", "RPLK"],
+      DRP: ["DRP", "LEGAZPI", "DARAGA", "MABINI", "RPLK"],
+      RPLK: ["RPLK", "DRP", "LEGAZPI", "DARAGA", "MABINI"],
+      LGP: ["LGP", "DRP", "LEGAZPI", "DARAGA", "MABINI"],
+      RPLP: ["RPLP", "DRP", "LEGAZPI", "DARAGA", "MABINI"],
+      DARAGA: ["DARAGA", "LEGAZPI", "MABINI", "DRP"],
+      LEGAZPI: ["LEGAZPI", "DARAGA", "MABINI", "DRP"],
+      MABINI: ["MABINI", "LEGAZPI", "DARAGA", "DRP"]
     };
 
     const RADAR_POLL_MS = 15000;      // 15s free adsb.lol polling (Page 0 only)
@@ -986,7 +998,7 @@
         if (!airlineOk) return false;
       }
 
-      // 2. City filter (handles leading/trailing/extra spaces and partial words like MNL, Manil, Metro)
+      // 2. City filter (handles leading/trailing/extra spaces, partial words, and Bicol/Legazpi/DRP synonyms)
       const cities = state.cityFilter;
       if (cities && cities.length > 0) {
         const normalizedPlace = String(placeField || "")
@@ -996,11 +1008,12 @@
         if (!normalizedPlace || normalizedPlace === "---") return false;
 
         const cleanTokens = normalizedPlace
-          .replace(/[()]/g, " ")
+          .replace(/[()/]/g, " ")
           .split(/\s+/)
           .filter(Boolean);
 
-        const cityOk = cities.some(query => {
+        const expandedQueries = cities.flatMap(q => CITY_QUERY_ALIASES[q] || [q]);
+        const cityOk = expandedQueries.some(query => {
           if (normalizedPlace.includes(query)) return true;
           return cleanTokens.some(tok => tok.startsWith(query));
         });
@@ -1047,29 +1060,29 @@
       const icaoPfx = origin.icao === "WSSS" ? "SIA" : (origin.icao === "RPLL" ? "PAL" : "CEB");
       const now = Date.now();
       return [
-        { flight: `${iataPfx}321`, callsign: `${icaoPfx}321`, origin: "London (LHR)",       gate: "T3 / B4",  ago: 6,   landedMs: now - 6 * 60000 },
-        { flight: `${iataPfx}27`,  callsign: `${icaoPfx}27`,  origin: "Vancouver (YVR)",    gate: "T3 / A14", ago: 19,  landedMs: now - 19 * 60000 },
-        { flight: "CX739",         callsign: "CPA739",         origin: "Hong Kong (HKG)",    gate: "T4 / G11", ago: 34,  landedMs: now - 34 * 60000 },
-        { flight: `${iataPfx}402`, callsign: `${icaoPfx}402`, origin: "Metro Manila (MNL)", gate: "T3 / A12", ago: 52,  landedMs: now - 52 * 60000 },
-        { flight: "QF1",           callsign: "QFA1",           origin: "Sydney (SYD)",       gate: "T1 / C22", ago: 88,  landedMs: now - 88 * 60000 },
-        { flight: "JL711",         callsign: "JAL711",         origin: "Tokyo (NRT)",        gate: "T1 / D40", ago: 195, landedMs: now - 195 * 60000 },
-        { flight: `${iataPfx}106`, callsign: `${icaoPfx}106`, origin: "Kuala Lumpur (KUL)", gate: "T2 / F31", ago: 310, landedMs: now - 310 * 60000 }
+        { flight: `${iataPfx}321`, callsign: `${icaoPfx}321`, origin: "London (LHR)",           gate: "T3 / B4",  ago: 6,   landedMs: now - 6 * 60000 },
+        { flight: `${iataPfx}27`,  callsign: `${icaoPfx}27`,  origin: "Vancouver (YVR)",        gate: "T3 / A14", ago: 19,  landedMs: now - 19 * 60000 },
+        { flight: "CX739",         callsign: "CPA739",         origin: "Hong Kong (HKG)",        gate: "T4 / G11", ago: 34,  landedMs: now - 34 * 60000 },
+        { flight: `${iataPfx}402`, callsign: `${icaoPfx}402`, origin: "Metro Manila (MNL)",     gate: "T3 / A12", ago: 52,  landedMs: now - 52 * 60000 },
+        { flight: "PR2922",        callsign: "GAP2922",        origin: "Legazpi / Daraga (DRP)", gate: "T2",       ago: 88,  landedMs: now - 88 * 60000 },
+        { flight: "JL711",         callsign: "JAL711",         origin: "Tokyo (NRT)",            gate: "T1 / D40", ago: 195, landedMs: now - 195 * 60000 },
+        { flight: `${iataPfx}106`, callsign: `${icaoPfx}106`, origin: "Kuala Lumpur (KUL)",     gate: "T2 / F31", ago: 310, landedMs: now - 310 * 60000 }
       ];
     }
 
     function generateDemoDepartures(origin) {
       const iataPfx = origin.icao === "WSSS" ? "SQ"  : (origin.icao === "RPLL" ? "PR"  : "5J");
       const icaoPfx = origin.icao === "WSSS" ? "SIA" : (origin.icao === "RPLL" ? "PAL" : "CEB");
-      const dest1   = origin.icao === "WSSS" ? "Metro Manila (MNL)" : (origin.icao === "RPLL" ? "Tokyo (NRT)" : "Metro Manila (MNL)");
-      const dest2   = origin.icao === "WSSS" ? "Vancouver (YVR)"    : (origin.icao === "RPLL" ? "Vancouver (YVR)" : "Cebu (CEB)");
+      const dest1   = origin.icao === "WSSS" ? "Metro Manila (MNL)" : (origin.icao === "RPLL" ? "Legazpi / Daraga (DRP)" : "Metro Manila (MNL)");
+      const dest2   = origin.icao === "WSSS" ? "Vancouver (YVR)"    : (origin.icao === "RPLL" ? "Vancouver (YVR)"        : "Cebu (CEB)");
       const now = Date.now();
       return [
-        { flight: "PR510",         callsign: "PAL510",         dest: dest1,             gate: "T2 / F52", inMin: 152, depMs: now + 152 * 60000 },
+        { flight: "PR2921",        callsign: "GAP2921",        dest: dest1,             gate: "T2",       inMin: 45,  depMs: now + 45 * 60000 },
+        { flight: "PR510",         callsign: "PAL510",         dest: "Metro Manila (MNL)", gate: "T2 / F52", inMin: 152, depMs: now + 152 * 60000 },
         { flight: `${iataPfx}28`,  callsign: `${icaoPfx}28`,  dest: dest2,             gate: "T3 / B2",  inMin: 185, depMs: now + 185 * 60000 },
         { flight: `${iataPfx}308`, callsign: `${icaoPfx}308`, dest: "London (LHR)",    gate: "T3 / A5",  inMin: 210, depMs: now + 210 * 60000 },
         { flight: "QF2",           callsign: "QFA2",           dest: "Sydney (SYD)",    gate: "T1 / C24", inMin: 260, depMs: now + 260 * 60000 },
-        { flight: "JL712",         callsign: "JAL712",         dest: "Tokyo (NRT)",     gate: "T1 / D42", inMin: 480, depMs: now + 480 * 60000 },
-        { flight: "CX714",         callsign: "CPA714",         dest: "Hong Kong (HKG)", gate: "T4 / G14", inMin: 640, depMs: now + 640 * 60000 }
+        { flight: "JL712",         callsign: "JAL712",         dest: "Tokyo (NRT)",     gate: "T1 / D42", inMin: 480, depMs: now + 480 * 60000 }
       ];
     }
 
@@ -1148,11 +1161,11 @@
     }
 
     function getArrivalsCacheKey(icao) {
-      return `wio_arrivals_6h_v9_${icao}_${getFilterCacheSuffix()}`;
+      return `wio_arrivals_6h_v10_${icao}_${getFilterCacheSuffix()}`;
     }
 
     function getDeparturesCacheKey(icao) {
-      return `wio_departures_12h_v9_${icao}_${getFilterCacheSuffix()}`;
+      return `wio_departures_12h_v10_${icao}_${getFilterCacheSuffix()}`;
     }
 
     async function requestArrivals(ignoreCache) {
